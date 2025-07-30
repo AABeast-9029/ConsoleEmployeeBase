@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ConsoleEmployeeBase": {
+      "commandName": "Project",
+      "commandLineArgs": "myApp4"
+    }
+  }
+}
