@@ -1,10 +1,5 @@
 ﻿using Npgsql;
-using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ConsoleEmployeeBase
 {
@@ -126,20 +121,36 @@ namespace ConsoleEmployeeBase
                 {
                     connection.Open();
 
-                    using (var transaction = connection.BeginTransaction())
-                    {
-                        foreach (var employee in employees)
-                        {
-                            using (var cmd = new Npgsql.NpgsqlCommand("INSERT INTO employees (full_name, date_of_birth, gender) VALUES (@fullName, @dateOfBirth, @gender)", connection))
-                            {
-                                cmd.Parameters.AddWithValue("fullName", employee.FullName);
-                                cmd.Parameters.AddWithValue("dateOfBirth", employee.DateOfBirth);
-                                cmd.Parameters.AddWithValue("gender", employee.Gender);
-                                cmd.ExecuteNonQuery();
-                            }
-                        }
+                    int batchSize = 1000;
 
-                        transaction.Commit();
+                    for (int i = 0; i < employees.Count; i += batchSize)
+                    {
+                        using (var transaction = connection.BeginTransaction())
+                        {
+                            using (var cmd = new NpgsqlCommand())
+                            {
+                                cmd.Connection = connection;
+                                cmd.Transaction = transaction;
+
+                                cmd.CommandText = "INSERT INTO employees (full_name, date_of_birth, gender) VALUES (@fullName, @dateOfBirth, @gender)";
+
+                                cmd.Parameters.Add(new NpgsqlParameter("fullName", NpgsqlTypes.NpgsqlDbType.Varchar));
+                                cmd.Parameters.Add(new NpgsqlParameter("dateOfBirth", NpgsqlTypes.NpgsqlDbType.Date));
+                                cmd.Parameters.Add(new NpgsqlParameter("gender", NpgsqlTypes.NpgsqlDbType.Varchar));
+
+                                int endIndex = Math.Min(i + batchSize, employees.Count);
+
+                                for (int j = i; j < endIndex; j++)
+                                {
+                                    var employee = employees[j];
+                                    cmd.Parameters["fullName"].Value = employee.FullName;
+                                    cmd.Parameters["dateOfBirth"].Value = employee.DateOfBirth;
+                                    cmd.Parameters["gender"].Value = employee.Gender;
+                                    cmd.ExecuteNonQuery();
+                                }
+                            }
+                            transaction.Commit();
+                        }
                     }
                 }
             }

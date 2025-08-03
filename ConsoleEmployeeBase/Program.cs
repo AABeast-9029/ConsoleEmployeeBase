@@ -1,6 +1,7 @@
 ﻿using ConsoleEmployeeBase;
 using Npgsql;
 using System.Data.Common;
+using System.Reflection;
 using static ConsoleEmployeeBase.Employee;
 
 class Program
@@ -96,14 +97,40 @@ class Program
     // Реализация автоматического заполнения 1.000.000 сотрудников
     private static void GenerateEmployees(int count)
     {
-        Console.WriteLine("Подождите, записи добавляються в таблицу. Примерное время ожидания 1 минута 30 секунд.");
+        var startTime = DateTime.Now;
+        Console.WriteLine("Подождите, записи добавляються в таблицу. Примерное время ожидания 1 минута 40 секунд.");
         var generator = new EmployeeGenerator();
         var employees = generator.GenerateEmployees(count);
         generator.InsertEmployees(employees, ConnectionString);
+        var endTime = DateTime.Now;
+        var duration = endTime - startTime;
+        Console.WriteLine($"Время выполнения запроса: {duration.TotalMilliseconds} мс");
     }
 
+    // Реализация выборки с замером времени
     private static void QueryEmployees()
     {
-        // Реализация выборки с замером времени
+        var startTime = DateTime.Now;
+
+        var employees = new List<Employee>();
+        var connection = new NpgsqlConnection(ConnectionString);
+        connection.Open();
+        using (var cmd = new NpgsqlCommand("SELECT full_name, date_of_birth, gender FROM employees WHERE gender = 'Male' AND full_name LIKE 'F%'", connection))
+        using (var reader = cmd.ExecuteReader())
+        {
+            while (reader.Read())
+            {
+                var FullName = reader.GetString(0);
+                var birthDate = reader.GetDateTime(1);
+                var gender = reader.GetString(2);
+                employees.Add(new Employee(FullName, birthDate, gender));
+            }
+        }
+
+        var endTime = DateTime.Now;
+        var duration = endTime - startTime;
+
+        Console.WriteLine($"Найдено сотрудников: {employees.Count}");
+        Console.WriteLine($"Время выполнения запроса: {duration.TotalMilliseconds} мс");
     }
 }
